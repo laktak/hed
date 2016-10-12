@@ -1,0 +1,81 @@
+#!/usr/bin/env node
+
+var hed=require("../lib/hed");
+var Hjson=require("hjson");
+var fs=require("fs");
+var os=require("os");
+var path=require("path");
+
+var configFile=path.join(os.homedir(), ".hed.hjson");
+var args={}, argv=[];
+process.argv.slice(2).forEach(function(x) {
+  var i;
+  if (x[0]==="-") { i=x.indexOf("="); args[x.substr(1, i>0?i-1:undefined)]=i>0?x.substr(i+1):true; }
+  else argv.push(x);
+});
+
+if (args["-help"] || args["?"] || args.h) {
+  console.error("hed, an edit tool for JSON configs.");
+  console.error();
+  console.error("Usage:");
+  console.error("  hed FILE");
+  console.error("  hed (-h | --help | -?)");
+  console.error("  hed (-V | --version)");
+  console.error("  hed --config");
+  console.error();
+  console.error("It allows you to use comments and avoid missing/trailing comma mistakes, even with configs like npm's package.json where comments are forbidden.");
+  console.error("hed will convert FILE to Hjson (FILE.hed.hjson) for editing. After you are done FILE is updated with your changes but the Hjson version is kept.");
+  console.error("When you next edit FILE it merges the comments from the existing Hjson and gives you a new Hjson version for editing.");
+  console.error();
+  console.error("Options:");
+  console.error("  --config  edit the hed config.");
+  //console.error("  -c      ...compact JSON.");
+  return;
+}
+else if (args.V || args["-version"]) {
+  console.log("Hjson version:" + Hjson.version);
+  return;
+}
+else if (args["-config"]) {
+  argv=[configFile];
+}
+else if (argv.length!==1) {
+  console.error("missing argument, see hed --help");
+  process.exit(-1);
+}
+
+var config={};
+if (fs.existsSync(configFile)) {
+  try { config=Hjson.parse(fs.readFileSync(configFile, "utf8")); }
+  catch (err) {
+    console.error("Could not load config: "+err.message);
+    process.exit(-1);
+  }
+}
+
+var editor=config.editor||process.env.EDITOR||"vi";
+if (!fs.existsSync(configFile)) {
+  try { fs.writeFileSync(configFile, Hjson.stringify({ editor: editor }), "utf8"); }
+  catch (err) {}
+}
+
+
+hed.edit(editor, argv[0])
+.then(function(info) {
+  if (info.json) {
+    console.log("Successfully updated "+info.json);
+    console.log("Your comments remain in "+info.hjson);
+  }
+  if (info.droppedComments) {
+    var keys=Object.keys(info.droppedComments);
+    if (keys.length>0) {
+      console.log("The following comments were removed because the data no longer exist:");
+      keys.forEach(function(key) {
+        console.log(key+": "+info.droppedComments[key]);
+      });
+    }
+  }
+})
+.catch(function(err) {
+  console.error("error: "+err);
+});

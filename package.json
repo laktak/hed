@@ -1,0 +1,33 @@
+{
+  "name": "hed",
+  "description": "An edit tool for JSON configs. allows you to edit JSON configs a Hjson while keeping comments",
+  "main": "./lib/hed.js",
+  "author": "Christian Zangl",
+  "version": "0.1.1",
+  "keywords": [
+    "hjson",
+    "json",
+    "comments",
+    "config",
+    "edit",
+    "cli"
+  ],
+  "bin": {
+    "hed": "./bin/hed"
+  },
+  "scripts": {
+    "lint": "jshint bin/hed lib/*.js"
+  },
+  "homepage": "https://github.com/laktak/hed",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/laktak/hed.git"
+  },
+  "bugs": {
+    "url": "https://github.com/laktak/hed/issues"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "hjson": "^2.3.0"
+  }
+}
