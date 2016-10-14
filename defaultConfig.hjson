@@ -1,0 +1,14 @@
+# hed config
+{
+  # the default editor is taken from $EDITOR
+  editor: vi
+
+  # to use nano
+  # editor: nano
+
+  # to use sublime:
+  # editor: subl -w
+
+  # to use atom
+  # editor: atom -w
+}

@@ -14,22 +14,34 @@ process.argv.slice(2).forEach(function(x) {
   else argv.push(x);
 });
 
+var config={};
+if (fs.existsSync(configFile)) {
+  try { config=Hjson.parse(fs.readFileSync(configFile, "utf8")); }
+  catch (err) {
+    console.error("Could not load config: "+err.message);
+    //process.exit(-1);
+  }
+}
+
+var defaultEditor=process.platform==="win32"?"notepad":"vi";
+var editor=config.editor||process.env.EDITOR||defaultEditor;
+
 if (args["-help"] || args["?"] || args.h) {
-  console.error("hed, an edit tool for JSON configs.");
+  console.error("hed, an edit tool for JSON configs. Comments are preserved outside of JSON.");
   console.error();
   console.error("Usage:");
-  console.error("  hed FILE");
+  console.error("  hed [OPTIONS] FILE");
   console.error("  hed (-h | --help | -?)");
   console.error("  hed (-V | --version)");
-  console.error("  hed --config");
+  console.error("  hed --config [EDITOR]");
   console.error();
-  console.error("It allows you to use comments and avoid missing/trailing comma mistakes, even with configs like npm's package.json where comments are forbidden.");
-  console.error("hed will convert FILE to Hjson (FILE.hed.hjson) for editing. After you are done FILE is updated with your changes but the Hjson version is kept.");
-  console.error("When you next edit FILE it merges the comments from the existing Hjson and gives you a new Hjson version for editing.");
+  console.error("hed allows you to use comments and avoid missing/trailing comma mistakes, even with configs like npm's package.json where comments are forbidden.");
+  console.error("For details see https://github.com/laktak/hed");
   console.error();
   console.error("Options:");
+  console.error("  -e        edit JSON with comments (default).");
+  console.error("  -s        show JSON with comments.");
   console.error("  --config  edit the hed config.");
-  //console.error("  -c      ...compact JSON.");
   return;
 }
 else if (args.V || args["-version"]) {
@@ -37,6 +49,7 @@ else if (args.V || args["-version"]) {
   return;
 }
 else if (args["-config"]) {
+  if (argv.length==1) editor=argv[0];
   argv=[configFile];
 }
 else if (argv.length!==1) {
@@ -44,38 +57,47 @@ else if (argv.length!==1) {
   process.exit(-1);
 }
 
-var config={};
-if (fs.existsSync(configFile)) {
-  try { config=Hjson.parse(fs.readFileSync(configFile, "utf8")); }
-  catch (err) {
-    console.error("Could not load config: "+err.message);
-    process.exit(-1);
-  }
-}
-
-var editor=config.editor||process.env.EDITOR||"vi";
 if (!fs.existsSync(configFile)) {
-  try { fs.writeFileSync(configFile, Hjson.stringify({ editor: editor }), "utf8"); }
+  var defaultConfig=Hjson.rt.parse(fs.readFileSync(path.join(__dirname, "../defaultConfig.hjson"), "utf8"));
+  defaultConfig.editor=editor;
+  try { fs.writeFileSync(configFile, Hjson.rt.stringify(defaultConfig), "utf8"); }
   catch (err) {}
 }
 
+if (args.s) {
+  // show
+  hed.show(argv[0]).then(function(data) {
+    process.stdout.write(Hjson.rt.stringify(data, {
+      colors: true,
+    })+"\n");
+  });
+  return;
+}
 
-hed.edit(editor, argv[0])
-.then(function(info) {
-  if (info.json) {
-    console.log("Successfully updated "+info.json);
-    console.log("Your comments remain in "+info.hjson);
-  }
-  if (info.droppedComments) {
-    var keys=Object.keys(info.droppedComments);
-    if (keys.length>0) {
-      console.log("The following comments were removed because the data no longer exist:");
-      keys.forEach(function(key) {
-        console.log(key+": "+info.droppedComments[key]);
+var stdin, onChar;
+
+function onError(err) {
+  return new Promise(function(resolve, reject) {
+    console.error("error: "+(err.message||err));
+
+    if (!stdin) {
+      stdin=process.stdin;
+      stdin.setRawMode( true );
+      stdin.on('data', function (key) {
+        if (key) onChar(key.toString());
       });
     }
-  }
-})
+    onChar=function(key) {
+      stdin.pause();
+      console.log(key);
+      if (key!=='d') resolve(); else reject("aborted");
+    };
+    process.stdout.write("any key to reopen, d to discard: ");
+    stdin.resume();
+  });
+}
+
+hed.edit(argv[0], { editor: editor, status: console.log, onError: onError })
 .catch(function(err) {
   console.error("error: "+err);
 });

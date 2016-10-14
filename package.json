@@ -1,9 +1,9 @@
 {
   "name": "hed",
-  "description": "An edit tool for JSON configs. allows you to edit JSON configs a Hjson while keeping comments",
+  "description": "An edit tool for JSON configs. Comments are preserved outside of JSON.",
   "main": "./lib/hed.js",
   "author": "Christian Zangl",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "keywords": [
     "hjson",
     "json",
@@ -28,6 +28,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "hjson": "^2.3.0"
+    "hjson": "^2.3.1"
   }
 }
